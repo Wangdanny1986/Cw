@@ -1,0 +1,20 @@
+{
+  "name": "freecloud-automation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Node.js scaffolding for FreeCloud/V2Board/SSPanel check-in automation with Playwright and OTP support.",
+  "scripts": {
+    "checkin": "node src/checkin.mjs",
+    "checkin:dev": "NODE_ENV=development node --trace-warnings src/checkin.mjs",
+    "playwright:install": "playwright install --with-deps",
+    "playwright:install-deps": "playwright install-deps"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "otplib": "^12.0.1",
+    "playwright": "^1.48.0"
+  }
+}

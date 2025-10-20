@@ -1,0 +1,33 @@
+# Node
+node_modules/
+.npm/
+package-lock.json
+# Allow committing lockfile for reproducible installs
+!package-lock.json
+
+# Env files
+.env
+.env.*
+
+# Playwright
+playwright-report/
+playwright/.cache/
+.ms-playwright/
+trace.zip
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Python (existing workflow convenience)
+.venv/
+__pycache__/
+*.pyc
