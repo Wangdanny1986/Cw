@@ -1,0 +1,109 @@
+名称：daily-checkin
+on：
+workflow_dispatch：
+schedule：
+-cron：“15 1 * * *”
+jobs：
+run：
+runs-on：ubuntu-lateststeps
+：
+-uses：actions/setup-python@v5
+with：
+python-version：“3.11”
+-run：pip install requests
+-name：Run checkin
+env：
+ACCOUNTS：${{ secrets.ACCOUNTS }}
+TG_BOT_TOKEN：${{ secrets.TG_BOT_TOKEN }}
+TG_CHAT_ID：${{
+
+) 或 re.search(r'name=["']_token["']\s+value= "' ',html,re.I)
+返回
+
+auth/login"};
+如果 csrf: h["X-CSRF-Token"]=csrf
+lr=s.post(f"{base}/auth/login",data={"email":email,"passwd":pwd,"remember_me":"on","code":""},headers=h,timeout=20,allow_redirects=True)
+如果 lr.status_code 不在 (200,302): return False,f"SS 登录失败 {lr.status_code}: {lr.text[:200]}"
+ur=s.get(f"{
+
+base}/user",timeout=20)
+if ur.status_code!=200: return False,f"SS /user 失败 {ur.status_code}"
+page_csrf=ex(ur.text) or csrf
+hh={"Referer":f"{base}/user","X-Requested-With":"XMLHttpRequest"}
+if page_csrf: hh["X-CSRF-Token"]=page_csrf
+cr=s.post(f"{base}/user/checkin",headers=hh,timeout=20)
+try: cj=cr.json()
+except: cj={"raw":cr.text}
+return (cr.status_code==200),(f"SS 成功: {cj}" if cr.status_code==200 else f"SS 失败 {cr.status_code}: {cj}")
+def run_one(a):
+base=(a.get("base_url") 或 "https://panel.freecloud.ltd").rstrip("/")
+email=a.get("email"); pwd=a.get("密码"); chat=a.get("tg_chat_id")
+如果没有（邮箱和密码）：notify(f"[{base}] 头像邮箱/密码，跳过。",chat); return
+notification(f"开始签到：{email} @ {base}",chat)
+ok,msg=v2(base,email,pwd)
+if ok: notify(f"{email} -> {msg}",chat); return
+notification(f"{email} -> [V2 未成功] {msg}",chat)
+ok2,msg2=sspanel(base,email,p
+
+wd)
+如果ok2: 通知(f"{email} -> {msg2}",chat); return
+notification(f"{email} -> [SS 未成功] {msg2}",chat); notify(f"{email} -> 可能有验证码/Cloudflare，需要 Cookie/Playwright。",chat)
+def main():
+delay=random.randint(0,120)*60
+if delay>0: print(f"随机延迟启动: {delay} 秒"); time.sleep(delay)
+accs=[]
+if os.getenv("ACCOUNTS"):
+try:
+j=json.loads(os.getenv("ACCOUNTS","[]"))
+if isinstance(j,list): accs=j
+except: pass
+if not accs:
+print("缺少 ACCOUNTS，退出。"); return
+for i,a in enumerate(accs):
+run_one(a)
+if i<len(accs)-1:
+jitter=random.randint(5,60); print(f"下一个账户
+
+等待: {jitter} 秒"); time.sleep(jitter)
+if name == " main ": main()
+PY
+python checkin.py
+
+步骤二：添加Secrets（只填重复）
+
+仓库顶部设置
+左侧选择 Secrets and Variables → Actions
+点击Newrepositorysecret，依次添加以下Secrets（名称区分大小写）：
+
+名称：TG_BOT_TOKEN，值：在BotFather重新生成的“新”Token（不要在聊天里粘贴）
+名称：TG_CHAT_ID，值：7072828349
+名称：ACCOUNTS，值粘贴下面 JSON
+库顶部点 行动
+
+左侧选择每日签到
+右侧点击运行工作流程手动运行
+打开这次运行的日志，确认每个账号的“登录/签到成功/失败”输出
+成功后你会收到 Telegram 通知
+之后的自动运行
+
+该工作流程每天 01:15 UTC 触发
+脚本引入随机延迟 0–120 分钟，因此实际执行时间为 01:15 UTC 之后的或 0–120 分钟
+如果更改时间或随机范围，告诉我你希望的时间窗口，我给你修改
+常见问题与排查
+
+Telegram 不发消息或报错
+确认TG_BOT_TOKEN是否为新Token，且没有粘贴到聊天中
+本地或浏览器验证：
+打开 https://api.telegram.org/bot 你的新TOKEN/getMe 返回 ok:true 即有效
+或发送一条消息测试：
+https://api.telegram.org/bot你的新TOKEN/sendMessage?chat_id=7072828349&text=hello
+登录失败、返回验证码/Cloudflare
+GitHub Actions 环境可能被风控拦截
+解决方案：改为“Cookie 登录版”（把已登录 Cookie 写入帐户），我可以给你换脚本并
+提供 ACCOUNTS 的 cookie 字段示例
+
+帐户 JSON 报错
+确认是纯JSON（字段名/字符串彩虹是双引
+号，边界之间用逗号分隔，整体用方括号）
+
+工作流未
