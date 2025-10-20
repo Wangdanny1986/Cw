@@ -1,0 +1,50 @@
+name: daily-checkin
+on:
+workflow_dispatch:
+schedule:
+- cron: '15 1 * * *' # 每天 01:15 UTC 触发
+jobs:
+run:
+runs-on: ubuntu-latest
+steps:
+- name: 设置 Python
+使用
+
+    with:
+      python-version: '3.11'
+
+  - name: Install deps
+    run: pip install requests
+
+  - name: Run checkin
+    env:
+      ACCOUNTS: ${{ secrets.ACCOUNTS }}
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+    run: |
+      python - <<'PY'
+      import os, re, json, time, random, requests
+      GLOBAL_TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
+      GLOBAL_TG_CHAT_ID = os.getenv("TG_CHAT_ID")
+
+      def notify(m, c=None):
+          print(m)
+          if GLOBAL_TG_BOT_TOKEN and (c or GLOBAL_TG_CHAT_ID):
+              try:
+                  requests.post(
+                      f"https://api.telegram.org/bot{GLOBAL_TG_BOT
+_TOKEN}/sendMessage",
+data={"chat_id": c 或 GLOBAL_TG_CHAT_ID, "text": m},
+timeout=20
+)
+except
+Exception as e: print("TG 通知失败:", e)
+
+      def v2(base, email, pwd):
+          s = requests.Session()
+          try:
+              r =
+s.post(f"{base}/api/v1/passport/auth/login", json={"email": email, "password": pwd}, timeout=20)
+if r.status_code != 200:
+return False, f"V2 登录失败 {r.status_code}: {r.text[:200]}"
+d = r.json() if r.headers.get("content-type","").startswith("application/json") else {}
