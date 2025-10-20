@@ -1,0 +1,73 @@
+name: freecloud-daily-checkin
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"  # 00:00 UTC daily
+
+jobs:
+  checkin:
+    name: FreeCloud Daily Check-in
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: freecloud-daily-checkin
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install --no-audit --no-fund
+          else
+            echo "No package.json found, skipping npm install"
+          fi
+
+      - name: Install Playwright browsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y playwright install --with-deps
+
+      - name: Run FreeCloud automation
+        env:
+          ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${ACCOUNTS_JSON}"
+          echo "::add-mask::${TELEGRAM_BOT_TOKEN}"
+          echo "::add-mask::${TELEGRAM_CHAT_ID}"
+
+          if [ -z "${ACCOUNTS_JSON:-}" ] || [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Missing required secrets: ensure ACCOUNTS_JSON, TELEGRAM_BOT_TOKEN, and TELEGRAM_CHAT_ID are set." >&2
+            exit 1
+          fi
+
+          if [ -f "scripts/freecloud-checkin.mjs" ]; then
+            node scripts/freecloud-checkin.mjs
+          elif [ -f "scripts/freecloud-checkin.js" ]; then
+            node scripts/freecloud-checkin.js
+          elif [ -f "freecloud-checkin.mjs" ]; then
+            node freecloud-checkin.mjs
+          elif [ -f "freecloud-checkin.js" ]; then
+            node freecloud-checkin.js
+          else
+            echo "FreeCloud automation script not found. Expected one of: scripts/freecloud-checkin.mjs, scripts/freecloud-checkin.js, freecloud-checkin.mjs, freecloud-checkin.js" >&2
+            exit 1
+          fi

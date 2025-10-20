@@ -1,0 +1,36 @@
+# General
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.tmp/
+.cache/
+
+# Node.js
+node_modules/
+package-lock.json*
+yarn.lock*
+pnpm-lock.yaml*
+.npm/
+.nvm/
+.nyc_output/
+coverage/
+dist/
+build/
+.next/
+.turbo/
+playwright-report/
+test-results/
+
+# Environments
+.env
+.env.*
+*.local
+
+# Python (if used in workflows/scripts)
+__pycache__/
+.venv/
+.python-version
+
+# OS
+Icon?
