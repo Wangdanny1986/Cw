@@ -1,0 +1,87 @@
+name: daily-checkin
+on:
+workflow_dispatch:
+schedule:
+- cron: "15 1 * * "
+jobs:
+run:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/setup-python@v5
+with:
+python-version: "3.11"
+- run: pip install requests
+- name: Run checkin
+env:
+ACCOUNTS: ${{ secrets.ACCOUNTS }}
+TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+run: |
+cat > checkin.py << 'PY'
+import os, re, json, time, random, requests
+GLOBAL_TG_BOT_TOKEN=os.getenv("TG_BOT_TOKEN"); GLOBAL_TG_CHAT_ID=os.getenv("TG_CHAT_ID")
+def notify(m,c=None):
+print(m)
+if GLOBAL_TG_BOT_TOKEN and (c or GLOBAL_TG_CHAT_ID):
+try: requests.post(f"https://api.telegram.org/bot{GLOBAL_TG_BOT_TOKEN}/sendMessage", data={"chat_id":c or GLOBAL_TG_CHAT_ID,"text":m}, timeout=20)
+except Exception as e: print("TG 通知失败:",e)
+def v2(base,email,pwd):
+s=requests.Session()
+r=s.post(f"{base}/api/v1/passport/auth/login",json={"email":email,"password":pwd},timeout=20)
+if r.status_code!=200: return False,f"V2 登录失败 {r.status_code}: {r.text[:200]}"
+d=r.json() if r.headers.get("content-type","").startswith("application/json") else {}
+token=(d.get("data") or {}).get("token") or d.get("token")
+if not token: return False,f"V2 无 token: {d}"
+cr=s.post(f"{base}/api/v1/user/checkin",headers={"Authorization":f"Bearer {token}"},timeout=20)
+try: cj=cr.json()
+except: cj={"raw":cr.text}
+return (cr.status_code==200),(f"V2 成功: {cj}" if cr.status_code==200 else f"V2 失败 {cr.status_code}: {cj}")
+def ex(html):
+m=re.search(r'name=["']csrf-token["']\s+content="'',html,re.I) or re.search(r'csrfToken["']\s[:=]\s*"'',html,re.I) or re.search(r'name=["']_token["']\s+value="'',html,re.I)
+return m.group(1) if m else None
+def sspanel(base,email,pwd):
+s=requests.Session()
+r=s.get(f"{base}/auth/login",timeout=20)
+csrf=ex(r.text) if r.ok else None
+h={"Referer":f"{base}/auth/login"};
+if csrf: h["X-CSRF-Token"]=csrf
+lr=s.post(f"{base}/auth/login",data={"email":email,"passwd":pwd,"remember_me":"on","code":""},headers=h,timeout=20,allow_redirects=True)
+if lr.status_code not in (200,302): return False,f"SS 登录失败 {lr.status_code}: {lr.text[:200]}"
+ur=s.get(f"{base}/user",timeout=20)
+if ur.status_code!=200: return False,f"SS /user 失败 {ur.status_code}"
+page_csrf=ex(ur.text) or csrf
+hh={"Referer":f"{base}/user","X-Requested-With":"XMLHttpRequest"}
+if page_csrf: hh["X-CSRF-Token"]=page_csrf
+cr=s.post(f"{base}/user/checkin",headers=hh,timeout=20)
+try: cj=cr.json()
+except: cj={"raw":cr.text}
+return (cr.status_code==200),(f"SS 成功: {cj}" if cr.status_code==200 else f"SS 失败 {cr.status_code}: {cj}")
+def run_one(a):
+base=(a.get("base_url") or "https://panel.freecloud.ltd").rstrip("/")
+email=a.get("email"); pwd=a.get("password"); chat=a.get("tg_chat_id")
+if not (email and pwd): notify(f"[{base}] 缺少邮箱/密码，跳过。",chat); return
+notify(f"开始签到：{email} @ {base}",chat)
+ok,msg=v2(base,email,pwd)
+if ok: notify(f"{email} -> {msg}",chat); return
+notify(f"{email} -> [V2 未成功] {msg}",chat)
+ok2,msg2=sspanel(base,email,pwd)
+if ok2: notify(f"{email} -> {msg2}",chat); return
+notify(f"{email} -> [SS 未成功] {msg2}",chat); notify(f"{email} -> 可能有验证码/Cloudflare，需要 Cookie/Playwright。",chat)
+def main():
+delay=random.randint(0,120)*60
+if delay>0: print(f"随机延迟启动: {delay} 秒"); time.sleep(delay)
+accs=[]
+if os.getenv("ACCOUNTS"):
+try:
+j=json.loads(os.getenv("ACCOUNTS","[]"))
+if isinstance(j,list): accs=j
+except: pass
+if not accs:
+print("缺少 ACCOUNTS，退出。"); return
+for i,a in enumerate(accs):
+run_one(a)
+if i<len(accs)-1:
+jitter=random.randint(5,60); print(f"下一个账户等待: {jitter} 秒"); time.sleep(jitter)
+if name=="main": main()
+PY
+python checkin.py
