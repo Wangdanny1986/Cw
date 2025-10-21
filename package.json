@@ -1,0 +1,11 @@
+{
+  "name": "freecloud-checkin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "checkin": "node scripts/freecloud-checkin-playwright.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.48.2"
+  }
+}

@@ -1,26 +1,27 @@
 name: daily-checkin
 on:
-schedule:
-cron: '0 0 * * *' # 每天 08:00 Asia/Shanghai
-workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 08:00 Asia/Shanghai
+  workflow_dispatch:
+
 jobs:
-checkin:
-runs-on: ubuntu-latest
-steps:
-- name: Checkout
-uses: actions/checkout@v4
+  checkin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  - name: Setup Node
-    uses: actions/setup-node@v4
-    with:
-      node-version: '20'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-  - name: Install deps
-    run: |
-      npm ci || npm i
-      npx playwright install --with-deps
+      - name: Install deps
+        run: |
+          npm ci || npm i
+          npx playwright install --with-deps
 
-  - name: Run Playwright check-in
-    env:
-      ACCOUNTS: ${{ secrets.ACCOUNTS }}
-    run: npm run checkin
+      - name: Run Playwright check-in
+        env:
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}
+        run: npm run checkin
