@@ -1,15 +1,49 @@
-name: daily-checkin
-on:
-schedule:
-cron: '0 0 * * *' # 每天 08:00 Asia/Shanghai
-workflow_dispatch:
-jobs:
-run:
-runs-on: ubuntu-latest
-steps:
-- name: Checkout
-uses: actions/checkout@v4
+名称：daily-checkin
+on：
+schedule：
+-cron：'0 0 * * *'#每天 08:00 亚洲/
+
+上海
+workflow_dispatch：
+
+作业：
+运行：
+运行于：ubuntu-latest
+步骤：
+-名称：Checkout
+用途：actions/checkout@v4
 
   - name: Setup Python
     uses: actions/setup-python@v5
     with:
+      python-version: '3.11'
+
+  - name: Install dependencies
+    run: pip install -U requests
+
+  - name: Run checkin
+    env:
+      ACCOUNTS: ${{ secrets.ACCOUNTS }}
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+    run: |
+      python - <<'PY'
+      import os, json, time, requests
+      accounts = []
+      try:
+          accounts = json.loads(os.getenv('ACCOUNTS','[]'))
+      except Exception:
+          pass
+      print(f"Loaded {len(accounts)} accounts")
+      # TODO: 在这里实现登录 + 签到逻辑，并汇总/通知
+      if os.getenv('TG_BOT_TOKEN') and os.getenv('TG_CHAT_ID'):
+          try:
+              requests.post(
+                  f"https://api.telegram.org/bot{os.getenv('TG_BOT_TOKEN')}/sendMessage",
+                  json={"chat_id": os.getenv('TG_CHAT_ID'), "text": "workflow
+已启动 OK"},
+timeout=15
+)
+except Exception as e:
+print("Telegram 通知失败:", e)
+PY
