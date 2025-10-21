@@ -1,51 +1,157 @@
 name: daily-checkin
 on:
-  schedule:
-    - cron: '0 0 * * *'  # 08:00 Asia/Shanghai
-  workflow_dispatch:
-
+schedule:
+cron: '0 0 * * *' # 每天 08:00 Asia/Shanghai
+workflow_dispatch:
 jobs:
-  freecloud:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+checkin:
+runs-on: ubuntu-latest
+steps:
+- name: Checkout
+uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
 
-      - name: Install Playwright (Chromium) and dependencies
-        run: |
-          npm init -y
-          npm i playwright
-          npx playwright install --with-deps chromium
+  - name: Install deps
+    run: |
+      npm ci || npm i
+      npx playwright install --with-deps
 
-      - name: Run FreeCloud check-in (Playwright)
-        id: run_playwright
-        continue-on-error: true
-        env:
-          ACCOUNTS: ${{ secrets.ACCOUNTS }}
-        run: |
-          node scripts/freecloud-checkin-playwright.mjs
+  - name: Run Playwright check-in
+    env:
+      ACCOUNTS: ${{ secrets.ACCOUNTS }}
+    run: npm run checkin
+2) 在仓库根目录新增/覆盖 package.json
+{
+"name": "freecloud-checkin",
+"private": true,
+"type": "module",
+"scripts": {
+"check
 
-      # Optional fallback: keep Python flow out of the critical path
-      - name: Set up Python 3.11 (fallback)
-        if: steps.run_playwright.outcome == 'failure'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+in": "node scripts/freecloud-checkin-playwright.mjs"
+},
+"dependencies": {
+"playwright": "^1.48.2"
+}
+}
 
-      - name: Install Python dependencies (fallback)
-        if: steps.run_playwright.outcome == 'failure'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -U requests
+新增 scripts/freecloud-checkin-playwright.mjs
+import
+https://panel.freecloud.ltd';
+const LOGIN = ${BASE}/index.php?rp=/login;
+const CLIENT = ${BASE}/clientarea.php;
 
-      - name: Run FreeCloud check-in (Python fallback)
-        if: steps.run_playwright.outcome == 'failure'
-        env:
-          ACCOUNTS: ${{ secrets.ACCOUNTS }}
-        run: |
-          python scripts/freecloud_checkin.py
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function trySelectors(page, selectors, action) {
+for (const sel of selectors) {
+const el = await page.$(sel);
+if (el) {
+await action(el, sel);
+return true;
+}
+}
+return false;
+}
+
+async function loginAndCheckin(browser, acc) {
+const ctx = await browser.newContext({
+userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118 Safari/537.36',
+});
+const page = await ctx.newPage();
+
+${label} Opening login page ...`);
+try {
+await page.goto(LOGIN, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+// Fill email/username
+const emailSelectors = ['input[name="email"]', 'input[name="username"]', '#inputEmail', '#email'];
+const pwSelectors = ['input[name="password"]', '#inputPassword', '#password'];
+
+const okEmail = await trySelectors(page, emailSelectors, (el) => el.fill(acc.email || ''));
+ace([
+page.click('button[type="submit"], button:has-text("登录"), button:has-text("Login"), input[type="submit"]'),
+(async () => {
+await sleep(400);
+await page.keyboard.press('Enter');
+})()
+]);
+
+// Wait for either clientarea or 2FA/human verification
+const nav = await Promise.race([
+  page.waitForURL(url => url.href.includes
+('clientarea') || url.href.includes('dashboard'), { timeout: 15000 }).then(()=>'ok').catch(()=>null),
+page.waitForSelector('text=两步验证|二步验证|2FA|验证码|人机验证|验证', { timeout: 15000 }).then(()=>'2fa').catch(()=>null)
+]);
+
+if (nav === '2fa' || !nav) {
+  await ctx.close();
+  return { label, status: '2
+fa_or_human_verification' };
+}
+
+// Ensure clientarea
+if (!page.url().includes('clientarea')) {
+  await page.goto(CLIENT, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(()=>{});
+}
+
+// Try to find and click a "每日签到/签到" button/link
+const btn = await page.$('text=每日签到, text=签到, text=Sign in, text=Check-in');
+if (btn) {
+  await btn.click().catch(()=>{});
+  await sleep(2000);
+} else {
+  // fallback: try click any button contains 签到
+  const anyBtn = await page.$('button:has-text("签"), a:has-text("签")');
+  if (anyBtn) {
+    await anyBtn.click().catch(()=>{});
+    await sleep(2000);
+  }
+}
+
+// Read result text
+const content = (await page.textContent('body')).slice(0, 2000);
+let result =
+'unknown';
+if (/已签到|已领取|already/i.test(content)) result = 'already';
+else if (/成功|Success/i.test(content)) result = 'success';
+else if (/签到|Sign/i.test(content)) result = 'maybe_success';
+
+await ctx.close();
+if (result === 'success' || result === 'already' || result === 'maybe_success') {
+  return { label, status: result };
+}
+return { label, status: 'failed', reason: 'unable to confirm check-in' };
+} catch (e) {
+await ctx.close();
+return { label, status: 'failed', reason: e?.message || 'exception' };
+}
+}
+
+async function main() {
+if (!Array.isArray(
+
+ACCOUNTS) || ACCOUNTS.length === 0) {
+console.log('No accounts configured.');
+process.exit(1);
+}
+const browser = await chromium.launch({ headless: true });
+const results = [];
+for (const acc of ACCOUNTS) {
+const r = await loginAndCheckin(browser, acc);
+console.log(>>> ${r.label}: ${r.status}${r.reason ? ' - ' + r.reason : ''});
+results.push(r);
+await sleep(1000 + Math.floor(Math.random()*1000));
+}
+await browser.close();
+
+const ok = results.some(r => ['success','already','maybe_success'].includes(r.status));
+const hardFails = results.filter(r => r.status === 'failed');
+console.log('Summary:', results);
+process.exit(ok || hardFails
+
+.length < results.length ?
