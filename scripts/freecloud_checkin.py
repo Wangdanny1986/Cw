@@ -482,7 +482,7 @@ def main() -> int:
         # Light delay after each account to be polite
         time.sleep(random.uniform(1.0, 3.0))
 
-    # Build Telegram summary
+    # Build summary
     lines = []
     ok_count = 0
     fail_count = 0
@@ -506,10 +506,12 @@ def main() -> int:
     if twofa_count > 0:
         msg += "\n\n提示: 有账号需要 2FA/人机验证，建议切换 Cookie 模式或提供 TOTP。"
 
+    # Always print summary to console
+    log(msg)
+
+    # Optional Telegram summary (not required)
     if tg_token and tg_default_chat:
         send_telegram_summary(tg_token, tg_default_chat, msg)
-    else:
-        log("Telegram token/chat_id not set; skipping notification.")
 
     # Exit code policy: non-zero exit only if all accounts failed due to non-2FA errors
     total_accounts = len([r for r in results])
