@@ -11,17 +11,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright (Chromium) and dependencies
+        run: |
+          npm init -y
+          npm i playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run FreeCloud check-in (Playwright)
+        id: run_playwright
+        continue-on-error: true
+        env:
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}
+        run: |
+          node scripts/freecloud-checkin-playwright.mjs
+
+      # Optional fallback: keep Python flow out of the critical path
+      - name: Set up Python 3.11 (fallback)
+        if: steps.run_playwright.outcome == 'failure'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install Python dependencies (fallback)
+        if: steps.run_playwright.outcome == 'failure'
         run: |
           python -m pip install --upgrade pip
           pip install -U requests
 
-      - name: Run FreeCloud check-in
+      - name: Run FreeCloud check-in (Python fallback)
+        if: steps.run_playwright.outcome == 'failure'
         env:
           ACCOUNTS: ${{ secrets.ACCOUNTS }}
         run: |
