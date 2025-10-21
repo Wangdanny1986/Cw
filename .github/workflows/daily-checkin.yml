@@ -1,42 +1,11 @@
 name: daily-checkin
 on:
-schedule:
-- cron: '0 0 * * *' # 每天 08:00 Asia/Shanghai
-workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 08:00 Asia/Shanghai
+  workflow_dispatch:
 
-作业：
-运行：
-运行于：ubuntu-latest
-环境：
-TELEGRAM_BOT_TOKEN：${{ secrets.TELEGRAM_BOT_TOKEN }}
-TELEGRAM_CHAT_ID：${{ secrets.TELEGRAM_CHAT_ID }}
-步骤：
-- 名称：Checkout
-用途：actions/checkout@v4
-
-  - name: Setup Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
-
-  - name: Install deps
-    run: pip install -U requests
-
-  - name: Telegram test
-    if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
-    run: |
-      curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -H 'Content-Type: application/json' \
-        -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"Test from GitHub Actions $(date -u)\"}" \
-        -w "\nHTTP: %{http_code}\n"
-
-  - name: Run checkin
-    env:
-      ACCOUNTS: ${{ secrets.ACCOUNTS }}
-    run: |
-      python - <<'PY'
-      import os, json, time, requests
-      accounts = json.loads(os.getenv("ACCOUNTS","[]"))
-      print("accounts:", len(accounts))
-      # TODO: 登录+签到逻辑与 Telegram 通知
-      PY
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "workflow OK"
