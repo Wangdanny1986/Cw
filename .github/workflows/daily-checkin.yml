@@ -1,40 +1,42 @@
-name: FreeCloud Daily Check-in
-
+name: daily-checkin
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'  # 08:00 Asia/Shanghai
+schedule:
+- cron: '0 0 * * *' # 每天 08:00 Asia/Shanghai
+workflow_dispatch:
 
-jobs:
-  checkin:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+作业：
+运行：
+运行于：ubuntu-latest
+环境：
+TELEGRAM_BOT_TOKEN：${{ secrets.TELEGRAM_BOT_TOKEN }}
+TELEGRAM_CHAT_ID：${{ secrets.TELEGRAM_CHAT_ID }}
+步骤：
+- 名称：Checkout
+用途：actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+  - name: Install deps
+    run: pip install -U requests
 
-      - name: Telegram test
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN && secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -H 'Content-Type: application/json' \
-            -d "{\"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\", \"text\": \"Test from GitHub Actions $(date -u)\"}" \
-            -w "\nHTTP: %{http_code}\n"
+  - name: Telegram test
+    if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
+    run: |
+      curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -H 'Content-Type: application/json' \
+        -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"Test from GitHub Actions $(date -u)\"}" \
+        -w "\nHTTP: %{http_code}\n"
 
-      - name: Run FreeCloud check-in
-        env:
-          ACCOUNTS: ${{ secrets.ACCOUNTS }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python scripts/freecloud_checkin.py
+  - name: Run checkin
+    env:
+      ACCOUNTS: ${{ secrets.ACCOUNTS }}
+    run: |
+      python - <<'PY'
+      import os, json, time, requests
+      accounts = json.loads(os.getenv("ACCOUNTS","[]"))
+      print("accounts:", len(accounts))
+      # TODO: 登录+签到逻辑与 Telegram 通知
+      PY
